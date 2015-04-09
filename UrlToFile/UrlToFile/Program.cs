@@ -8,13 +8,16 @@ using Microsoft.Office.Interop.Excel;
 using System.Data;
 using System.Data.OleDb;
 using System.Net;
+using CsvHelper;
+using System.IO;
 
 namespace UrlToFile {
     class Program {
 
-        private static string sourceFile = String.Empty;
-        private static string outputFormat = @"c:\temp\{0}.jpg";
-        private static string errorFile = @"c:\temp\UrlToFileError.txt";
+        private static string _sourceFile = String.Empty;
+        private static string _outputFormat = @"c:\temp\{0}_{1}.jpg";               // Russ Reid
+        //private static string _outputFormat = @"c:\temp\Child_{0}-{1}.jpg";        // Blue North
+        private static string _errorFile = @"c:\temp\UrlToFileError.txt";
 
         static void Main(string[] args) {
 
@@ -25,25 +28,25 @@ namespace UrlToFile {
 
             // gather all the parameters
             foreach (string arg in args) {
-                Console.WriteLine("arg: [" + arg + "]");
-
                 if (arg.StartsWith("/S:", StringComparison.InvariantCultureIgnoreCase)) {
-                    sourceFile = arg.Substring(3);
+                    _sourceFile = arg.Substring(3);
                 }
                 if (arg.StartsWith("/O:", StringComparison.InvariantCultureIgnoreCase)) {
-                    outputFormat = arg.Substring(3);
+                    _outputFormat = arg.Substring(3);
                 }
                 if (arg.StartsWith("/E:", StringComparison.InvariantCultureIgnoreCase)) {
-                    errorFile = arg.Substring(3);
+                    _errorFile = arg.Substring(3);
                 }
             }
 
             // check existence of source file
-            if (sourceFile == string.Empty) {
+            if (_sourceFile == string.Empty) {
                 Usage();
                 return;
             }
 
+            #region Excel Format
+            
             //Console.WriteLine("source is [" + sourceFile + "]");
             //// open the source file
             //Application xlApp = new Application();
@@ -75,7 +78,7 @@ namespace UrlToFile {
 
             //}
             //catch (Exception ex) {
-                
+
             //    Console.WriteLine("error encountered: " + ex.Message);
             //}
             //finally {
@@ -84,51 +87,104 @@ namespace UrlToFile {
             //    ReleaseObject(xlApp);
 
             //}
+            #endregion
+
+            #region Excel into Dataset
+            
+            // =======================================
 
 
+            //OleDbConnection MyConnection = null;
+            //WebClient webClient = new WebClient();
+            //try {
+            //    System.Data.DataSet DtSet;
+            //    System.Data.OleDb.OleDbDataAdapter MyCommand;
 
+            //    string connString = string.Format(@"provider=Microsoft.Jet.OLEDB.4.0;Data Source='{0}';Extended Properties=Excel 8.0;", sourceFile);
 
-            OleDbConnection MyConnection = null;
+            //    MyConnection = new OleDbConnection(connString);
+            //    MyCommand = new OleDbDataAdapter("select * from [Sheet1$]", MyConnection);
+            //    MyCommand.TableMappings.Add("Table", "TestTable");
+            //    DtSet = new System.Data.DataSet();
+            //    MyCommand.Fill(DtSet);
+
+            //    int rowCount = 0;
+            //    foreach (DataRow row in DtSet.Tables[0].Rows) {
+            //        string childId = (string)row["child"];
+            //        string url = (string)row["url"];
+
+            //        string target = string.Format(outputFormat, childId);
+            //        try {
+            //            webClient.DownloadFile(url, target);
+            //        }
+            //        catch (Exception ex) {
+            //            // todo: add this to error file.
+            //            Console.WriteLine(string.Format("error row {4}: copying url [{1}] to [{2}]{0}{3}",
+            //                    Environment.NewLine, url, target, ex.Message, rowCount));
+            //        }
+
+            //        rowCount++;
+            //    }
+            //    //dataGridView1.DataSource = DtSet.Tables[0];
+            //}
+            //catch (Exception ex) {
+            //    Console.WriteLine("error encountered: " + ex.Message);
+            //}
+            //finally {
+            //    webClient.Dispose();
+            //    MyConnection.Close();
+            //}
+            #endregion
+
+            // -------------------------
+
+            Console.WriteLine("UrlToFile Utility. World Vision Canada. @2015 NMTT");
+            Console.WriteLine();
+            Console.WriteLine("Source file: [{0}]", _sourceFile);
+            Console.WriteLine("Output format: [{0}]", _outputFormat);
+            Console.WriteLine("Error file: [{0}]", _errorFile);
+
             WebClient webClient = new WebClient();
+
             try {
-                System.Data.DataSet DtSet;
-                System.Data.OleDb.OleDbDataAdapter MyCommand;
+                using (TextReader reader = File.OpenText(_sourceFile)) {
+                    var csv = new CsvReader(reader);
+                    csv.Configuration.HasHeaderRecord = false;
 
-                string connString = string.Format(@"provider=Microsoft.Jet.OLEDB.4.0;Data Source='{0}';Extended Properties=Excel 8.0;", sourceFile);
+                    int rowCount = 0;
+                    while (csv.Read()) {
+                        Console.WriteLine("Row:{0}...", rowCount);
 
-                MyConnection = new OleDbConnection(connString);
-                MyCommand = new OleDbDataAdapter("select * from [Sheet1$]", MyConnection);
-                MyCommand.TableMappings.Add("Table", "TestTable");
-                DtSet = new System.Data.DataSet();
-                MyCommand.Fill(DtSet);
+                        string country = csv.GetField(0);
+                        string childId = csv.GetField(1);
+                        string url = csv.GetField(2);
 
-                int rowCount = 0;
-                foreach (DataRow row in DtSet.Tables[0].Rows) {
-                    string childId = (string)row["child"];
-                    string url = (string)row["url"];
+                        string target = string.Format(_outputFormat, country, childId);
 
-                    string target = string.Format(outputFormat, childId);
-                    try {
-                        webClient.DownloadFile(url, target);
+                        Console.WriteLine("   url: [{0}]", url);
+                        Console.WriteLine("  dest: [{0}]", target);
+
+                        try {
+                            webClient.DownloadFile(url, target);
+                        }
+                        catch (Exception ex) {
+                            // todo: add this to error file.
+                            Console.WriteLine(string.Format("error row {4}: copying url [{1}] to [{2}]{0}{3}",
+                                    Environment.NewLine, url, target, ex.Message, rowCount));
+                        }
+                        rowCount++;
                     }
-                    catch (Exception ex) {
-                        // todo: add this to error file.
-                        Console.WriteLine(string.Format("error row {4}: copying url [{1}] to [{2}]{0}{3}", 
-                                Environment.NewLine, url, target, ex.Message, rowCount));
-                    }
-
-                    rowCount++;
                 }
-                //dataGridView1.DataSource = DtSet.Tables[0];
+
             }
             catch (Exception ex) {
                 Console.WriteLine("error encountered: " + ex.Message);
             }
             finally {
                 webClient.Dispose();
-                MyConnection.Close();
             }
-            Console.Write("press <Enter> to exit...");
+
+            Console.Write("Done. Press <Enter> to exit...");
             Console.ReadLine();
         }
 
@@ -138,7 +194,7 @@ namespace UrlToFile {
             Console.WriteLine("UrlToFile /S:[drive:][path]filename [/O:[drive:][path]fileformat] [/E:[drive:][path]filename]");
             Console.WriteLine();
             Console.WriteLine("/S:[drive:][path]filename        Source file.");
-            Console.WriteLine("/O:[drive:][path]fileformat      Output fileformat.");
+            Console.WriteLine("/O:[drive:][path]fileformat      Output fileformat {0} corresponds to the country; {1} corresponds to the child id.");
             Console.WriteLine("/E:[drive:][path]filename        Error file.");
 
             Console.ReadLine();
@@ -156,6 +212,6 @@ namespace UrlToFile {
             finally {
                 GC.Collect();
             }
-        } 
+        }
     }
 }
