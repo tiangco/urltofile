@@ -17,7 +17,6 @@ namespace UrlToFile {
         private static string _sourceFile = String.Empty;
         private static string _outputFormat = @"c:\temp\{0}_{1}.jpg";               // Russ Reid
         //private static string _outputFormat = @"c:\temp\Child_{0}-{1}.jpg";        // Blue North
-        private static string _errorFile = @"c:\temp\UrlToFileError.txt";
 
         static void Main(string[] args) {
 
@@ -33,9 +32,6 @@ namespace UrlToFile {
                 }
                 if (arg.StartsWith("/O:", StringComparison.InvariantCultureIgnoreCase)) {
                     _outputFormat = arg.Substring(3);
-                }
-                if (arg.StartsWith("/E:", StringComparison.InvariantCultureIgnoreCase)) {
-                    _errorFile = arg.Substring(3);
                 }
             }
 
@@ -142,7 +138,6 @@ namespace UrlToFile {
             Console.WriteLine();
             Console.WriteLine("Source file: [{0}]", _sourceFile);
             Console.WriteLine("Output format: [{0}]", _outputFormat);
-            Console.WriteLine("Error file: [{0}]", _errorFile);
 
             WebClient webClient = new WebClient();
 
@@ -191,11 +186,10 @@ namespace UrlToFile {
         private static void Usage() {
             Console.WriteLine("Converts URLs into actual image files.");
             Console.WriteLine();
-            Console.WriteLine("UrlToFile /S:[drive:][path]filename [/O:[drive:][path]fileformat] [/E:[drive:][path]filename]");
+            Console.WriteLine("UrlToFile /S:[drive:][path]filename [/O:[drive:][path]fileformat]");
             Console.WriteLine();
-            Console.WriteLine("/S:[drive:][path]filename        Source file.");
-            Console.WriteLine("/O:[drive:][path]fileformat      Output fileformat {0} corresponds to the country; {1} corresponds to the child id.");
-            Console.WriteLine("/E:[drive:][path]filename        Error file.");
+            Console.WriteLine("/S:[drive:][path]filename        Comma Separated Value (CSV) source file (no header) with the record format of: <CounrtyCode>,<ChildId>,<ImageUrl>");
+            Console.WriteLine("/O:[drive:][path]fileformat      Output fileformat {0} corresponds to the first column of the csv file (country); {1} corresponds to the second column of the csv file (child id).");
 
             Console.ReadLine();
         }
